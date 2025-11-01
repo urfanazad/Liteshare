@@ -28,7 +28,8 @@ liteOffBtn.onclick = () => { liteMode = false; applyProfile('normal'); };
 async function joinRoom(roomId) {
   if (ws?.readyState === WebSocket.OPEN) return;
   const proto = (location.protocol === 'https:') ? 'wss' : 'ws';
-  ws = new WebSocket(`${proto}://${location.host}/ws`);
+  const token = window.LITESHARE_TOKEN || 'secret-token';
+  ws = new WebSocket(`${proto}://${location.host}/ws?token=${token}`);
 
   ws.onopen = () => {
     ws.send(JSON.stringify({ type: 'join', roomId }));

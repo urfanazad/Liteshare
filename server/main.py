@@ -6,25 +6,42 @@ for peer signalling and serves the WebRTC client under `/`.
 
 import asyncio
 import json
+import re
+import os
 from pathlib import Path
 from typing import Dict, Set
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, status
+from fastapi.security import APIKeyQuery
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 APP_DIR = Path(__file__).parent
 PUBLIC_DIR = APP_DIR / "public"
+API_TOKEN = os.environ.get("LITESHARE_TOKEN", "secret-token")
 
 app = FastAPI(title="LiteShare Mode (Python)")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://127.0.0.1:8000", "http://localhost:8000"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET"],
     allow_headers=["*"],
 )
+
+api_key_query = APIKeyQuery(name="token", auto_error=False)
+
+async def get_api_key(api_key: str = Depends(api_key_query)):
+    if not api_key or api_key != API_TOKEN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid API token")
+    return api_key
+
+def is_valid_room_id(room_id: str) -> bool:
+    """Validate room ID format to prevent malicious or malformed inputs."""
+    if not isinstance(room_id, str):
+        return False
+    return 1 <= len(room_id) <= 64 and bool(re.match(r"^[a-zA-Z0-9_-]+$", room_id))
 
 class RoomHub:
     def __init__(self):
@@ -59,10 +76,11 @@ app.mount("/static", StaticFiles(directory=str(PUBLIC_DIR)), name="static")
 
 @app.get("/")
 async def index():
-    return HTMLResponse((PUBLIC_DIR / "index.html").read_text(encoding="utf-8"))
+    html = (PUBLIC_DIR / "index.html").read_text(encoding="utf-8")
+    return HTMLResponse(html.replace("SECRET_TOKEN", API_TOKEN))
 
 @app.websocket("/ws")
-async def ws_endpoint(ws: WebSocket):
+async def ws_endpoint(ws: WebSocket, token: str = Depends(get_api_key)):
     await ws.accept()
     room_id = None
     try:
@@ -70,6 +88,8 @@ async def ws_endpoint(ws: WebSocket):
             raw = await ws.receive_text()
             try:
                 msg = json.loads(raw)
+                if not isinstance(msg, dict):
+                    continue
             except json.JSONDecodeError:
                 continue
 
@@ -78,13 +98,19 @@ async def ws_endpoint(ws: WebSocket):
             rid = msg.get("roomId")
 
             if mtype == "join" and rid:
+                if not is_valid_room_id(rid):
+                    continue
                 room_id = rid
                 await hub.join(room_id, ws)
                 await hub.broadcast(room_id, {"type": "peer-joined"}, sender=ws)
 
             elif room_id:
-                if mtype in ("offer", "answer", "ice"):
-                    await hub.broadcast(room_id, {"type": mtype, "payload": payload}, sender=ws)
+                if mtype in ("offer", "answer"):
+                    if isinstance(payload, dict) and isinstance(payload.get("sdp"), dict):
+                        await hub.broadcast(room_id, {"type": mtype, "payload": payload}, sender=ws)
+                elif mtype == "ice":
+                    if isinstance(payload, dict):
+                        await hub.broadcast(room_id, {"type": mtype, "payload": payload}, sender=ws)
 
     except WebSocketDisconnect:
         pass
