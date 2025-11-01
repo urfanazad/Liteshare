@@ -14,7 +14,19 @@ hangupBtn.onclick = () => hangup();
 async function joinRoom(roomId) {
   if (ws?.readyState === WebSocket.OPEN) return;
 
-  const serverUrl = 'ws://127.0.0.1:8000/ws?token=secret-token';
+  const vercelAppName = prompt("Please enter your Vercel app name (e.g., 'liteshare-xyz'):");
+  if (!vercelAppName) {
+    joinState.textContent = 'Vercel app name is required.';
+    return;
+  }
+
+  const token = prompt("Please enter your LiteShare token:");
+  if (!token) {
+    joinState.textContent = 'Token is required.';
+    return;
+  }
+
+  const serverUrl = `wss://${vercelAppName}.vercel.app/api/ws?token=${token}`;
   ws = new WebSocket(serverUrl);
 
   ws.onopen = () => {

@@ -24,9 +24,9 @@ API_TOKEN = os.environ.get("LITESHARE_TOKEN", "secret-token")
 app = FastAPI(title="LiteShare Mode (Python)")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:8000", "http://localhost:8000"],
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["GET"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
@@ -41,6 +41,7 @@ def is_valid_room_id(room_id: str) -> bool:
     """Validate room ID format to prevent malicious or malformed inputs."""
     if not isinstance(room_id, str):
         return False
+    # Room ID must be 1-64 characters, alphanumeric with hyphens/underscores.
     return 1 <= len(room_id) <= 64 and bool(re.match(r"^[a-zA-Z0-9_-]+$", room_id))
 
 class RoomHub:
@@ -76,8 +77,9 @@ app.mount("/static", StaticFiles(directory=str(PUBLIC_DIR)), name="static")
 
 @app.get("/")
 async def index():
-    html = (PUBLIC_DIR / "index.html").read_text(encoding="utf-8")
-    return HTMLResponse(html.replace("SECRET_TOKEN", API_TOKEN))
+    html_content = (PUBLIC_DIR / "index.html").read_text(encoding="utf-8")
+    html_content = html_content.replace("%%LITESHARE_TOKEN%%", API_TOKEN)
+    return HTMLResponse(content=html_content, status_code=200)
 
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket, token: str = Depends(get_api_key)):
@@ -88,8 +90,6 @@ async def ws_endpoint(ws: WebSocket, token: str = Depends(get_api_key)):
             raw = await ws.receive_text()
             try:
                 msg = json.loads(raw)
-                if not isinstance(msg, dict):
-                    continue
             except json.JSONDecodeError:
                 continue
 
@@ -105,12 +105,8 @@ async def ws_endpoint(ws: WebSocket, token: str = Depends(get_api_key)):
                 await hub.broadcast(room_id, {"type": "peer-joined"}, sender=ws)
 
             elif room_id:
-                if mtype in ("offer", "answer"):
-                    if isinstance(payload, dict) and isinstance(payload.get("sdp"), dict):
-                        await hub.broadcast(room_id, {"type": mtype, "payload": payload}, sender=ws)
-                elif mtype == "ice":
-                    if isinstance(payload, dict):
-                        await hub.broadcast(room_id, {"type": mtype, "payload": payload}, sender=ws)
+                if mtype in ("offer", "answer", "ice"):
+                    await hub.broadcast(room_id, {"type": mtype, "payload": payload}, sender=ws)
 
     except WebSocketDisconnect:
         pass
