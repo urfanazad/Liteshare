@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LiteShare Mode Extension</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h2>LiteShare Mode</h2>
+    <div class="card">
+      <label>Room ID</label>
+      <input id="roomId" value="demo-room" />
+      <button id="joinBtn">Join</button>
+      <span id="joinState" class="muted">Not joined</span>
+    </div>
+    <div class="card">
+      <h3>Share Controls</h3>
+      <button id="shareBtn">Start Screen Share</button>
+      <button id="stopShareBtn" disabled>Stop Share</button>
+      <button id="hangupBtn" disabled>Hang Up</button>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
