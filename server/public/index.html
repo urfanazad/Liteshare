@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LiteShare Mode — Python Edition</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; }
+    .row { display:flex; gap:16px; flex-wrap:wrap; }
+    video { width: 480px; max-width:100%; background:#111; border-radius:8px; }
+    .card { border:1px solid #e5e5e5; border-radius:12px; padding:16px; max-width: 720px; }
+    label { display:block; margin:8px 0 4px; font-weight:600; }
+    button { margin-right:8px; padding:8px 12px; }
+    .muted { color:#666; font-size:.9rem; }
+    .mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
+    .ok { color:#0a7; } .warn { color:#d80; } .bad { color:#d22; }
+  </style>
+</head>
+<body>
+  <h2>LiteShare Mode <span class="muted">— Safe Mode for Screen Sharing (Python)</span></h2>
+
+  <div class="card">
+    <label>Room ID</label>
+    <input id="roomId" value="demo-room" />
+    <button id="joinBtn">Join</button>
+    <span id="joinState" class="muted">Not joined</span>
+  </div>
+
+  <div class="card">
+    <h3>Share Controls</h3>
+    <div class="row">
+      <div>
+        <button id="shareBtn">Start Screen Share</button>
+        <button id="stopShareBtn" disabled>Stop Share</button>
+      </div>
+      <div>
+        <button id="liteOnBtn" disabled>Enable LiteShare Mode</button>
+        <button id="liteOffBtn" disabled>Disable LiteShare Mode</button>
+      </div>
+      <div>
+        <button id="hangupBtn" disabled>Hang Up</button>
+      </div>
+    </div>
+    <p class="muted">LiteShare lowers resolution/FPS, caps bitrate, and adapts to weak networks.</p>
+  </div>
+
+  <div class="row">
+    <div>
+      <h3>Local Share</h3>
+      <video id="localVideo" autoplay playsinline muted></video>
+    </div>
+    <div>
+      <h3>Remote View</h3>
+      <video id="remoteVideo" autoplay playsinline></video>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Live Network Stats</h3>
+    <pre id="stats" class="mono"></pre>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
